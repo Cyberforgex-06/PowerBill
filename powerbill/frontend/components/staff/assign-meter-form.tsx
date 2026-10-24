@@ -148,7 +148,21 @@ export function AssignMeterForm({ tariffs }: { tariffs: Tariff[] }) {
         </div>
         <div className="mt-5">
           <FieldLabel htmlFor="opening_reading">Opening reading (kWh)</FieldLabel>
-          <Input id="opening_reading" name="opening_reading" inputMode="decimal" autoComplete="off" required />
+          <Input
+            id="opening_reading"
+            name="opening_reading"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="any"
+            defaultValue="0"
+            autoComplete="off"
+            aria-describedby="opening_reading_help"
+            required
+          />
+          <p id="opening_reading_help" className="mt-2 text-xs leading-5 text-info">
+            Enter the current reading shown on the physical meter. Use 0 for a new test meter.
+          </p>
           <FieldError>{errors.opening_reading}</FieldError>
         </div>
         {message ? <p role="alert" className="mt-4 text-sm text-status-overdue">{message}</p> : null}
