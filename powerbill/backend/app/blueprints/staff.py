@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from ..extensions import db
 from ..models import Bill, Complaint, Meter, Payment, Tariff, User, utcnow
 from ..security import current_user, roles_required
-from ..serializers import bill_json, complaint_json, meter_json, payment_json
+from ..serializers import bill_json, complaint_json, meter_json, payment_json, user_json
 from ..services.audit import audit_event
 from ..services.billing import BillingError, create_opening_reading, create_reading_and_bill
 from ..services.payments import PaymentError, record_payment
@@ -52,6 +52,33 @@ def stats():
             "open_complaints": complaints,
         }
     )
+
+
+@staff_bp.get("/customers")
+@roles_required(*STAFF_ROLES)
+def customers():
+    """Search active customer accounts for meter assignment (staff only)."""
+    try:
+        reject_unknown_query_args({"q", "page"})
+        page = parse_page(request.args.get("page"))
+    except ValueError as exc:
+        return api_error("invalid_filter", str(exc), 400)
+    stmt = select(User).where(User.role == "customer", User.is_active.is_(True))
+    q = (request.args.get("q") or "").strip()
+    if q:
+        pattern = f"%{escape_like(q[:80])}%"
+        stmt = stmt.where(
+            (User.email.ilike(pattern, escape="\\"))
+            | (User.full_name.ilike(pattern, escape="\\"))
+        )
+    stmt = stmt.order_by(User.full_name.asc(), User.id.asc())
+    pagination = db.paginate(stmt, page=page, per_page=PER_PAGE, error_out=False)
+    return jsonify({
+        "items": [user_json(user) for user in pagination.items],
+        "page": page,
+        "pages": pagination.pages,
+        "total": pagination.total,
+    })
 
 
 @staff_bp.route("/meters", methods=["GET", "POST"])
